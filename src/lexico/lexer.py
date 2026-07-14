@@ -1,3 +1,25 @@
+from src.lexico.token import Token, TokenType
+
+PALAVRAS_RESERVADAS = {
+    'mov': TokenType.MOV,
+    'add': TokenType.ADD,
+    'sub': TokenType.SUB,
+    'mul': TokenType.MUL,
+    'div': TokenType.DIV,
+    'cmp': TokenType.CMP,
+    'jmp': TokenType.JMP,
+    'je': TokenType.JE,
+    'jne': TokenType.JNE,
+    'jg': TokenType.JG,
+    'jl': TokenType.JL,
+    'jle': TokenType.JLE,      # ADICIONADO
+    'jge': TokenType.JGE,      # ADICIONADO
+    'load': TokenType.LOAD,
+    'store': TokenType.STORE,
+    'hlt': TokenType.HLT,
+}
+
+# O resto do arquivo permanece igual...
 class Lexer:
     def __init__(self, codigo_fonte):
         self.codigo = codigo_fonte
@@ -5,6 +27,7 @@ class Lexer:
         self.linha = 1
         self.coluna = 1
         self.tokens = []
+        self.erros = []
     
     def tokenizar(self):
         """Analisa todo o código fonte e retorna a lista de tokens"""
@@ -26,7 +49,7 @@ class Lexer:
                 self.ler_comentario()
             
             # Números hexadecimais (0x...)
-            elif char == '0' and self.peek() == 'x':
+            elif char == '0' and self.pos + 1 < len(self.codigo) and self.codigo[self.pos + 1] == 'x':
                 self.ler_hex()
             
             # Números decimais
@@ -34,7 +57,7 @@ class Lexer:
                 self.ler_numero()
             
             # Identificadores e palavras reservadas
-            elif char.isalpha():
+            elif char.isalpha() or char == '_':
                 self.ler_identificador()
             
             # Símbolos especiais
@@ -50,38 +73,33 @@ class Lexer:
         self.pos += 1
         self.coluna += 1
     
-    def peek(self):
-        """Retorna o próximo caractere sem avançar"""
-        if self.pos + 1 < len(self.codigo):
-            return self.codigo[self.pos + 1]
-        return None
-    
     def ler_comentario(self):
         """Lê um comentário até o fim da linha"""
-        # Já estamos no ';'
         self.avancar()  # Pular o ;
         
         while self.pos < len(self.codigo) and self.codigo[self.pos] != '\n':
             self.avancar()
-        # Não criamos token para comentários
-        
+    
     def ler_hex(self):
         """Lê um número hexadecimal (0x...)"""
         col_inicio = self.coluna
         valor = ''
         
-        # Ler '0x'
-        valor += self.codigo[self.pos]  # 0
+        # Ler '0'
+        valor += self.codigo[self.pos]
         self.avancar()
-        valor += self.codigo[self.pos]  # x
+        
+        # Ler 'x'
+        valor += self.codigo[self.pos]
         self.avancar()
         
         # Ler dígitos hexadecimais
-        while self.pos < len(self.codigo) and self.codigo[self.pos] in '0123456789abcdefABCDEF':
+        while self.pos < len(self.codigo) and self.codigo[self.pos].lower() in '0123456789abcdef':
             valor += self.codigo[self.pos]
             self.avancar()
         
         if len(valor) <= 2:  # Só tem '0x'
+            self.erros.append(f"Erro léxico na linha {self.linha}, coluna {col_inicio}: Hexadecimal inválido '{valor}'")
             self.tokens.append(Token(TokenType.INVALIDO, valor, self.linha, col_inicio))
         else:
             self.tokens.append(Token(TokenType.HEX, valor, self.linha, col_inicio))
@@ -102,16 +120,16 @@ class Lexer:
         col_inicio = self.coluna
         valor = ''
         
-        while self.pos < len(self.codigo) and self.codigo[self.pos].isalnum():
+        while self.pos < len(self.codigo) and (self.codigo[self.pos].isalnum() or self.codigo[self.pos] == '_'):
             valor += self.codigo[self.pos]
             self.avancar()
         
         # Verificar se é registrador (a, b, c, d)
-        if valor in 'abcd' and len(valor) == 1:
+        if valor in ['a', 'b', 'c', 'd'] and len(valor) == 1:
             self.tokens.append(Token(TokenType.REG, valor, self.linha, col_inicio))
         # Verificar se é palavra reservada
-        elif valor in PALAVRAS_RESERVADAS:
-            self.tokens.append(Token(PALAVRAS_RESERVADAS[valor], valor, self.linha, col_inicio))
+        elif valor.lower() in PALAVRAS_RESERVADAS:
+            self.tokens.append(Token(PALAVRAS_RESERVADAS[valor.lower()], valor.lower(), self.linha, col_inicio))
         # Senão é um label
         else:
             self.tokens.append(Token(TokenType.ID, valor, self.linha, col_inicio))
@@ -119,6 +137,7 @@ class Lexer:
     def ler_simbolo(self):
         """Lê símbolos especiais"""
         char = self.codigo[self.pos]
+        col_inicio = self.coluna
         
         tabela_simbolos = {
             ',': TokenType.VIRGULA,
@@ -126,16 +145,13 @@ class Lexer:
             ';': TokenType.PONTO_VIRGULA,
             '[': TokenType.ABRE_COL,
             ']': TokenType.FECHA_COL,
-            '+': TokenType.OP_SOMA,
-            '-': TokenType.OP_SUB,
-            '*': TokenType.OP_MULT,
-            '/': TokenType.OP_DIV,
         }
         
         if char in tabela_simbolos:
-            self.tokens.append(Token(tabela_simbolos[char], char, self.linha, self.coluna))
+            self.tokens.append(Token(tabela_simbolos[char], char, self.linha, col_inicio))
             self.avancar()
         else:
             # Caractere inválido
-            self.tokens.append(Token(TokenType.INVALIDO, char, self.linha, self.coluna))
+            self.erros.append(f"Erro léxico na linha {self.linha}, coluna {col_inicio}: Caractere inválido '{char}'")
+            self.tokens.append(Token(TokenType.INVALIDO, char, self.linha, col_inicio))
             self.avancar()

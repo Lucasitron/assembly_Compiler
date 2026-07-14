@@ -20,6 +20,8 @@ class TokenType(Enum):
     JNE = auto()
     JG = auto()
     JL = auto()
+    JLE = auto()        # ADICIONADO: jump if less or equal
+    JGE = auto()        # ADICIONADO: jump if greater or equal
     LOAD = auto()
     STORE = auto()
     HLT = auto()
@@ -30,10 +32,6 @@ class TokenType(Enum):
     PONTO_VIRGULA = auto() # ;
     ABRE_COL = auto()   # [
     FECHA_COL = auto()  # ]
-    OP_SOMA = auto()    # +
-    OP_SUB = auto()     # -
-    OP_MULT = auto()    # *
-    OP_DIV = auto()     # /
     
     # Identificadores
     ID = auto()         # labels: loop, fim, main
@@ -51,3 +49,6 @@ class Token:
     
     def __str__(self):
         return f"Token({self.tipo.name:12} | '{self.valor:8}' | linha={self.linha:2}, col={self.coluna:2})"
+    
+    def __repr__(self):
+        return self.__str__()
