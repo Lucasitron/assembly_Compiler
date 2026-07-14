@@ -1,11 +1,11 @@
 import sys
 import os
 
-# Adiciona o diretório raiz ao path para permitir imports relativos
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from src.lexico.lexer import Lexer
 from src.sintatico.parser import Parser
+from src.semantico.analisador_semantico import AnalisadorSemantico
 
 def compilar(arquivo_entrada, verbose=False):
     """Compila um arquivo assembly didático"""
@@ -57,6 +57,19 @@ def compilar(arquivo_entrada, verbose=False):
     if verbose:
         print("\nÁrvore Sintática:")
         print(ast)
+    
+    # Fase 3: Análise Semântica
+    print("\n[3] ANÁLISE SEMÂNTICA")
+    print("-" * 40)
+    semantico = AnalisadorSemantico(verbose=verbose)
+    
+    if semantico.analisar(ast):
+        print("✅ Análise semântica concluída sem erros")
+        semantico.mostrar_resultados()
+    else:
+        print("ERROS SEMÂNTICOS ENCONTRADOS:")
+        semantico.mostrar_resultados()
+        return None
     
     print("\n✅ Compilação concluída com sucesso!")
     return ast
